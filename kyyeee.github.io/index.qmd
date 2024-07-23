@@ -23,6 +23,7 @@ When you click the **Render** button a document will be generated that includes 
 
 # opening tidyverse
 
+library(plotly)
 library(tidyverse)
 library(see)
 library(ggokabeito)
@@ -30,12 +31,13 @@ library(here)
 
 # create file
 library(readxl)
-IPGTT_tidy_data_corrected <- read_excel("IPGTT_tidy_data_corrected.xlsx")
+IPGTT_tidy_data_corrected <- read_excel(here("IPGTT_tidy_data_corrected.xlsx"))
 View(IPGTT_tidy_data_corrected)
 
 
 
 clean2_IPGTT_data <- IPGTT_tidy_data_corrected
+
 
 clean2_IPGTT_data %>% View()
 
@@ -186,7 +188,7 @@ overall_mean_bodyweight_testweek <- clean2_IPGTT_data %>%
   summarize(mean_body_weight = mean(body_weight, na.rm = TRUE), .groups = 'drop')
 
 # Create the ggplot with Okabe-Ito color palette
-ggplot(clean2_IPGTT_data, aes(x = test_week, y = body_weight, color = genotype)) +
+o <- ggplot(clean2_IPGTT_data, aes(x = test_week, y = body_weight, color = genotype)) +
   geom_point(alpha = 0.05) + # Individual data points
   geom_point(data = mean_bodyweight_testweek_genotype, 
              aes(x = test_week, y = mean_body_weight), 
@@ -206,6 +208,8 @@ ggplot(clean2_IPGTT_data, aes(x = test_week, y = body_weight, color = genotype))
   theme_minimal() +
   scale_color_okabe_ito() +
   theme(legend.title = element_blank(), legend.position = "bottom")
+
+  ggplotly(o)
 ```
 
 # Question #2:
@@ -226,7 +230,7 @@ median_gdata <- clean2_IPGTT_data_weeks1n4 %>%
   summarize(median_glucose = median(glucose, na.rm = TRUE))
 
 # Plot the data
-ggplot(clean2_IPGTT_data_weeks1n4, aes(x = minutes, y = glucose, color = genotype, group = mouse_id)) +
+p <- ggplot(clean2_IPGTT_data_weeks1n4, aes(x = minutes, y = glucose, color = genotype, group = mouse_id)) +
   geom_line(alpha = 0.25) +
   geom_line(data = median_gdata, aes(x = minutes, y = median_glucose, color = genotype, group = genotype)) + # Connecting medians
   labs(title = "IPGTT trajectories overlaid with within-genotype medians", x = "Test time (minutes)", y = "Blood glucose (mg/dL)", subtitle = "(First four weeks of data)") + 
@@ -235,4 +239,6 @@ ggplot(clean2_IPGTT_data_weeks1n4, aes(x = minutes, y = glucose, color = genotyp
   scale_color_okabe_ito() + 
   facet_wrap(~ test_week, ncol = 4) + 
   theme(legend.title = element_blank(), legend.position = "bottom", theme_classic())
+
+  ggplotly(p)
 ```

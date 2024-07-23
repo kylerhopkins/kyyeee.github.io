@@ -1,11 +1,236 @@
 ---
 title: "kyyeee.github.io"
+editor_options: 
+  chunk_output_type: console
 ---
 
 This is a Quarto website.
 
 To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
 
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r setup_chunk}
+
+# code for IPGTT_tidy_data_corrected
+
+# opening tidyverse
+
+library(tidyverse)
+library(see)
+library(ggokabeito)
+
+# create file
+
+library(readxl)
+original_IPGTT_tidy_data_corrected <- read_excel("IPGTT_tidy_data_corrected.xlsx")
+
+
+clean2_IPGTT_data <- original_IPGTT_tidy_data_corrected
+
+clean2_IPGTT_data %>% View()
+
+# previous variable names
+
+# names(clean2_IPGTT_data)
+
+# [1] "Mouse" "BW" "Test Week" "Genotype"
+
+# [5] "Sex" "Time Point" "Glucose Reading"
+
+# naming variables
+
+```
+
 ```{r}
-1 + 1
+
+# naming variables
+names(clean2_IPGTT_data) <- c("mouse", "body_weight", "test_week", "genotype", "sex", "minutes", "glucose")
+
+# replace "nan"s and "Mouse" in mouse variable
+
+clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(mouse = ifelse(mouse == "nan", NA, mouse))
+clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(mouse = ifelse(mouse == "Mouse", NA, mouse))
+
+# removing NA's from mouse variable
+
+clean2_IPGTT_data <- clean2_IPGTT_data %>% filter(!is.na(mouse))
+
+# add unique ids for each mouse
+
+clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(mouse_id = paste(mouse, genotype, sep = "_"))
+
+# ordering variables
+
+clean2_IPGTT_data <- clean2_IPGTT_data %>% select(mouse_id, mouse, genotype, sex, test_week, minutes, everything())
+
+# viewing variable structure
+
+str(clean2_IPGTT_data)
+
+# changing "sex" and "genotype" variable to factor (change levels)
+
+clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(sex = as_factor(sex))
+
+clean2_IPGTT_data <- clean2_IPGTT_data %>%
+  mutate(genotype = factor(genotype, levels = c("WT-WT", "Het-NOD", "KO-NOD")))
+
+# removing "min" from minutes variable
+
+clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(minutes = str_replace(minutes, " min", ""))
+
+# changing "minutes" variable to numeric
+
+clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(minutes = as.numeric(minutes))
+
+# 5 number summary of variables
+
+summary(clean2_IPGTT_data)
+
+```
+
+```{r}
+# creating data dictionary text
+data_dictionary <- data.frame(
+  Variable = c(
+    "mouse_id", "mouse", "genotype", "sex", "test_week", "minutes", "body_weight", "glucose"
+  ),
+  Type = c(
+    "Character", "Character", "Factor", "Factor", "Numeric", 
+    "Numeric", "Numeric", "Numeric"
+  ),
+  Description = c(
+    "Unique identifier for each mouse",
+    "Where the the mouse was pierced or the given number to differentiate",
+    "the genotype of the mouse",
+    "Gender of the mouse",
+    "The week of testing the results were taken",
+    "Minutes after glucose intake (minutes)",
+    "Weight of the mouse in grams (grams)",
+    "Amount of glucose in the mouse's bloodstream (mg/dL)"
+  ),
+  PossibleValues = c(
+    "unique mouse string + genotype",
+    "mouse string",
+    "genotype ",
+    "Male, Female, Male/Female",
+    "Positive numbers",
+    "Positive numbers",
+    "Positive numbers",
+    "Positive numbers"
+  ),
+  Example = c(
+    "203_KO-NOD, RP_Het-NOD, ...",
+    "LF, MP, 203, 205, ...",
+    "KO-NOD, Het-NOD, WT-WT, ...",
+    "'M', 'F'",
+    "1, 2, 3, 12, ...",
+    "0, 60, 120, ...",
+    "24.5, 22.9, ...",
+    "67, 100, ..."
+  )
+)
+```
+
+## load library and datasets
+
+```{r}
+# load libraries
+library(tidyverse)
+
+okabe_ito_palette <- rep(grDevices::palette.colors(palette = "Okabe-Ito"))
+
+#assign data
+mean_glucose_testweek <- clean2_IPGTT_data %>%
+  group_by(test_week) %>%
+  summarize(mean_glucose = mean(glucose, na.rm = TRUE))
+
+combined_data <- clean2_IPGTT_data %>%
+  select(test_week, glucose, genotype)
+
+combined_data$test_week <- factor(combined_data$test_week, levels = sort(unique(combined_data$test_week)))
+
+avg_data <- clean2_IPGTT_data %>%
+  group_by(test_week) %>%
+  summarize(
+    avg_body_weight = mean(body_weight, na.rm = TRUE),
+    avg_glucose = mean(glucose, na.rm = TRUE),
+    .groups = 'drop'
+  )
+```
+
+# Data visualization
+
+# Question #1:
+
+```{r}
+
+#Question #2: How does genotpye affect average body weight change over each week
+# Calculate means by genotype
+mean_bodyweight_testweek_genotype <- clean2_IPGTT_data %>%
+  group_by(test_week, genotype) %>%
+  summarize(mean_body_weight = mean(body_weight, na.rm = TRUE), .groups = 'drop')
+
+# Calculate overall means
+overall_mean_bodyweight_testweek <- clean2_IPGTT_data %>%
+  group_by(test_week) %>%
+  summarize(mean_body_weight = mean(body_weight, na.rm = TRUE), .groups = 'drop')
+
+# Create the ggplot with Okabe-Ito color palette
+ggplot(clean2_IPGTT_data, aes(x = test_week, y = body_weight, color = genotype)) +
+  geom_point(alpha = 0.05) + # Individual data points
+  geom_point(data = mean_bodyweight_testweek_genotype, 
+             aes(x = test_week, y = mean_body_weight), 
+             size = 3, shape = 18) + # Mean points for each genotype
+  geom_line(data = mean_bodyweight_testweek_genotype, 
+            aes(x = test_week, y = mean_body_weight, group = genotype), 
+            size = 1) + # Connecting lines for each genotype
+  geom_point(data = overall_mean_bodyweight_testweek, 
+             aes(x = test_week, y = mean_body_weight), 
+             size = 3, shape = 18, color = "black") + # Mean points for all data
+  geom_line(data = overall_mean_bodyweight_testweek, 
+            aes(x = test_week, y = mean_body_weight), 
+            size = 1, color = "black", linetype = "dashed") + # Mean line for all data
+  labs(title = "Scatter Plot of Body Weight Over Time by Genotype for Each Week", 
+       x = "Test Week", 
+       y = "Body Weight") +
+  theme_minimal() +
+  scale_color_okabe_ito() +
+  theme(legend.title = element_blank(), legend.position = "bottom")
+```
+
+# Question #2:
+
+```{r}
+#Question #3: How does genotpye affect glucose reading change within the first 2 hours of glucose injection/over each week
+library(dplyr)
+library(ggplot2)
+library(ggokabeito)
+
+# Filter the data for the first four weeks
+clean2_IPGTT_data_weeks1n4 <- clean2_IPGTT_data %>%
+  filter(test_week %in% 1:4, !is.na(glucose))
+
+# Calculate median glucose readings
+median_gdata <- clean2_IPGTT_data_weeks1n4 %>%
+  group_by(test_week, minutes, genotype) %>%
+  summarize(median_glucose = median(glucose, na.rm = TRUE))
+
+# Plot the data
+ggplot(clean2_IPGTT_data_weeks1n4, aes(x = minutes, y = glucose, color = genotype, group = mouse_id)) +
+  geom_line(alpha = 0.25) +
+  geom_line(data = median_gdata, aes(x = minutes, y = median_glucose, color = genotype, group = genotype)) + # Connecting medians
+  labs(title = "IPGTT trajectories overlaid with within-genotype medians", x = "Test time (minutes)", y = "Blood glucose (mg/dL)", subtitle = "(First four weeks of data)") + 
+  theme_minimal() +
+  scale_x_continuous(breaks = c(0, 30, 60, 90, 120)) +
+  scale_color_okabe_ito() + 
+  facet_wrap(~ test_week, ncol = 4) + 
+  theme(legend.title = element_blank(), legend.position = "bottom", theme_classic())
 ```

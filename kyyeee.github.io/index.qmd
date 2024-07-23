@@ -26,14 +26,16 @@ When you click the **Render** button a document will be generated that includes 
 library(tidyverse)
 library(see)
 library(ggokabeito)
+library(here)
 
 # create file
-
 library(readxl)
-original_IPGTT_tidy_data_corrected <- read_excel("IPGTT_tidy_data_corrected.xlsx")
+IPGTT_tidy_data_corrected <- read_excel("IPGTT_tidy_data_corrected.xlsx")
+View(IPGTT_tidy_data_corrected)
 
 
-clean2_IPGTT_data <- original_IPGTT_tidy_data_corrected
+
+clean2_IPGTT_data <- IPGTT_tidy_data_corrected
 
 clean2_IPGTT_data %>% View()
 

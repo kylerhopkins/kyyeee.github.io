@@ -8,7 +8,6 @@ This is a Quarto website.
 
 To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
 
-
 ## Quarto
 
 Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
@@ -28,6 +27,7 @@ library(tidyverse)
 library(see)
 library(ggokabeito)
 library(here)
+library(conflicted)
 
 # create file
 library(readxl)

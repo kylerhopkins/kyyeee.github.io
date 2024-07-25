@@ -217,7 +217,7 @@ o <- ggplot(clean2_IPGTT_data, aes(x = test_week, y = body_weight, color = genot
   ggplotly(o)
 ```
 
-# Question #2:
+# purrr functions:
 
 ```{r}
 #Question #3: How does genotpye affect glucose reading change within the first 2 hours of glucose injection/over each week

@@ -28,6 +28,7 @@ library(see)
 library(ggokabeito)
 library(here)
 library(conflicted)
+conflicted::conflicts_prefer(dplyr::filter)
 
 # create file
 library(readxl)
@@ -151,6 +152,10 @@ library(tidyverse)
 
 okabe_ito_palette <- rep(grDevices::palette.colors(palette = "Okabe-Ito"))
 
+#assign colors
+genotype_colors <- c("WT-WT" = "#E69F00", "Het-NOD" = "#56B4E9", "KO-NOD" = "#009E73")
+
+
 #assign data
 mean_glucose_testweek <- clean2_IPGTT_data %>%
   group_by(test_week) %>%
@@ -216,29 +221,62 @@ o <- ggplot(clean2_IPGTT_data, aes(x = test_week, y = body_weight, color = genot
 
 ```{r}
 #Question #3: How does genotpye affect glucose reading change within the first 2 hours of glucose injection/over each week
-library(dplyr)
+library(tidyverse)
 library(ggplot2)
+library(gridExtra)
 library(ggokabeito)
 
-# Filter the data for the first four weeks
-clean2_IPGTT_data_weeks1n4 <- clean2_IPGTT_data %>%
-  filter(test_week %in% 1:4, !is.na(glucose))
+# Define the plotting function for groups of weeks
+plot_glucose_trajectory_grouped <- function(clean2_IPGTT_data, week_range, genotype_pair, genotype_colors) {
+  filtered_data <- clean2_IPGTT_data %>%
+    filter(test_week %in% week_range, genotype %in% genotype_pair, !is.na(glucose))
+  
+  if (nrow(filtered_data) == 0) {
+    warning(paste("No data for weeks:", paste(week_range, collapse = ", "), 
+                  "and genotypes:", paste(genotype_pair, collapse = ", ")))
+    return(NULL)
+  }
+  
+  median_gdata <- filtered_data %>%
+    group_by(test_week, minutes, genotype) %>%
+    summarize(median_glucose = median(glucose, na.rm = TRUE), .groups = 'drop')
 
-# Calculate median glucose readings
-median_gdata <- clean2_IPGTT_data_weeks1n4 %>%
-  group_by(test_week, minutes, genotype) %>%
-  summarize(median_glucose = median(glucose, na.rm = TRUE))
+  ggplot(data = filtered_data, aes(x = minutes, y = glucose, color = genotype)) +
+    geom_point(alpha = 0.5) +
+    geom_line(aes(group = mouse_id), alpha = 0.3) +
+    geom_line(data = median_gdata, aes(x = minutes, y = median_glucose, color = genotype, group = interaction(genotype, test_week)), size = 1.2) +
+    labs(title = paste("Glucose Trajectories for Weeks", paste(range(week_range), collapse = "-")),
+         x = "Minutes", y = "Glucose Reading (mg/dL)") +
+    theme_minimal() +
+    scale_x_continuous(breaks = c(0, 30, 60, 90, 120)) +
+    scale_color_manual(values = genotype_colors) +
+    facet_wrap(~ test_week, ncol = 4) +
+    theme(legend.title = element_blank(), legend.position = "bottom")
+}
 
-# Plot the data
-p <- ggplot(clean2_IPGTT_data_weeks1n4, aes(x = minutes, y = glucose, color = genotype, group = mouse_id)) +
-  geom_line(alpha = 0.25) +
-  geom_line(data = median_gdata, aes(x = minutes, y = median_glucose, color = genotype, group = genotype)) + # Connecting medians
-  labs(title = "IPGTT trajectories overlaid with within-genotype medians", x = "Test time (minutes)", y = "Blood glucose (mg/dL)", subtitle = "(First four weeks of data)") + 
-  theme_minimal() +
-  scale_x_continuous(breaks = c(0, 30, 60, 90, 120)) +
-  scale_color_okabe_ito() + 
-  facet_wrap(~ test_week, ncol = 4) + 
-  theme(legend.title = element_blank(), legend.position = "bottom", theme_classic())
+# Define the week ranges and genotype pairs
+week_ranges <- list(1:4, 5:8, 9:12)
+genotype_pairs <- list(c("WT-WT", "Het-NOD"), c("Het-NOD", "KO-NOD"), c("WT-WT", "KO-NOD"))
 
-  ggplotly(p)
+# Define the colors for each genotype
+genotype_colors <- c("WT-WT" = "#E69F00", "Het-NOD" = "#56B4E9", "KO-NOD" = "#009E73")
+
+# Create plots for each combination of week range and genotype pair
+plots <- map(week_ranges, function(week_range) {
+  map(genotype_pairs, function(genotype_pair) {
+    plot_glucose_trajectory_grouped(clean2_IPGTT_data, week_range, genotype_pair, genotype_colors)
+  })
+})
+
+# Flatten the list of plots
+plots <- flatten(plots)
+
+# Print the number of successfully created plots
+print(paste("Number of plots created:", length(plots)))
+
+# Display the plots
+for (plot in plots) {
+  print(plot)
+}
+
 ```

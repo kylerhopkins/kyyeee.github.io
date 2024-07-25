@@ -11,7 +11,7 @@ website:
 
 format:
   html:
-    theme: jekyll-theme-midnight
+    theme: jekyll-theme-beautiful
     css: styles.css
     toc: true
 

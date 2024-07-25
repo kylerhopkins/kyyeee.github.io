@@ -220,38 +220,55 @@ o <- ggplot(clean2_IPGTT_data, aes(x = test_week, y = body_weight, color = genot
 # purrr functions:
 
 ```{r}
-#Question #3: How does genotpye affect glucose reading change within the first 2 hours of glucose injection/over each week
+#Load libraries
 library(tidyverse)
 library(ggplot2)
 library(gridExtra)
 library(ggokabeito)
+library(ggtext)
+library(showtext)
+
+# Add Source font
+font_add_google("Source Code Pro", family = "source")
+# Enable Font Usage
+showtext_auto()
 
 # Define the plotting function for groups of weeks
 plot_glucose_trajectory_grouped <- function(clean2_IPGTT_data, week_range, genotype_pair, genotype_colors) {
   filtered_data <- clean2_IPGTT_data %>%
     filter(test_week %in% week_range, genotype %in% genotype_pair, !is.na(glucose))
   
-  if (nrow(filtered_data) == 0) {
-    warning(paste("No data for weeks:", paste(week_range, collapse = ", "), 
-                  "and genotypes:", paste(genotype_pair, collapse = ", ")))
-    return(NULL)
-  }
-  
   median_gdata <- filtered_data %>%
     group_by(test_week, minutes, genotype) %>%
     summarize(median_glucose = median(glucose, na.rm = TRUE), .groups = 'drop')
 
-  ggplot(data = filtered_data, aes(x = minutes, y = glucose, color = genotype)) +
+  # Create colored genotype text for title
+  colored_genotype1 <- paste0("<span style='color:", genotype_colors[genotype_pair[1]], "'>", genotype_pair[1], "</span>")
+  colored_genotype2 <- paste0("<span style='color:", genotype_colors[genotype_pair[2]], "'>", genotype_pair[2], "</span>")
+
+  m <- ggplot(data = filtered_data, aes(x = minutes, y = glucose, color = genotype)) +
     geom_point(alpha = 0.5) +
     geom_line(aes(group = mouse_id), alpha = 0.3) +
     geom_line(data = median_gdata, aes(x = minutes, y = median_glucose, color = genotype, group = interaction(genotype, test_week)), size = 1.2) +
-    labs(title = paste("Glucose Trajectories for Weeks", paste(range(week_range), collapse = "-")),
-         x = "Minutes", y = "Glucose Reading (mg/dL)") +
+    labs(title = paste("Glucose Trajectories of", colored_genotype1, "vs", colored_genotype2, "for Weeks", min(week_range), "-", max(week_range)),
+         subtitle = paste("for Weeks", min(week_range), "-", max(week_range)),
+         x = "Time (minutes)", y = "Glucose Reading (mg/dL)") +
     theme_minimal() +
     scale_x_continuous(breaks = c(0, 30, 60, 90, 120)) +
     scale_color_manual(values = genotype_colors) +
     facet_wrap(~ test_week, ncol = 4) +
-    theme(legend.title = element_blank(), legend.position = "bottom")
+    theme(
+    text = element_text(family = "source"),
+    plot.title = element_text(hjust = 0, family = "source"),
+    plot.subtitle = element_text(hjust = 0, family = "source"),
+    axis.text = element_text(family = "source"),
+    axis.title = element_text(family = "source"),
+    strip.text = element_text(family = "source"),
+    legend.text = element_text(family = "source"),
+    legend.title = element_text(family = "source"),
+    legend.position = "none"
+  )
+  ggplotly(m)
 }
 
 # Define the week ranges and genotype pairs
@@ -278,5 +295,4 @@ print(paste("Number of plots created:", length(plots)))
 for (plot in plots) {
   print(plot)
 }
-
 ```

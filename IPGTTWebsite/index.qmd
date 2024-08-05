@@ -20,7 +20,7 @@ When you click the **Render** button a document will be generated that includes 
 
 # code for IPGTT_tidy_data_corrected
 
-# opening tidyverse
+# opening libraries
 
 library(plotly)
 library(tidyverse)
@@ -28,6 +28,7 @@ library(see)
 library(ggokabeito)
 library(here)
 library(conflicted)
+library(emmeans)
 conflicted::conflicts_prefer(dplyr::filter)
 
 # create file
@@ -60,49 +61,40 @@ clean2_IPGTT_data %>% View()
 names(clean2_IPGTT_data) <- c("mouse", "body_weight", "test_week", "genotype", "sex", "minutes", "glucose")
 
 # replace "nan"s and "Mouse" in mouse variable
-
 clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(mouse = ifelse(mouse == "nan", NA, mouse))
 clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(mouse = ifelse(mouse == "Mouse", NA, mouse))
 
 # removing NA's from mouse variable
-
 clean2_IPGTT_data <- clean2_IPGTT_data %>% filter(!is.na(mouse))
 
 # add unique ids for each mouse
-
 clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(mouse_id = paste(mouse, genotype, sep = "_"))
 
 # ordering variables
-
 clean2_IPGTT_data <- clean2_IPGTT_data %>% select(mouse_id, mouse, genotype, sex, test_week, minutes, everything())
 
 # viewing variable structure
-
 str(clean2_IPGTT_data)
 
 # changing "sex" and "genotype" variable to factor (change levels)
-
 clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(sex = as_factor(sex))
 
 clean2_IPGTT_data <- clean2_IPGTT_data %>%
   mutate(genotype = factor(genotype, levels = c("WT-WT", "Het-NOD", "KO-NOD")))
 
 # removing "min" from minutes variable
-
 clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(minutes = str_replace(minutes, " min", ""))
 
 # changing "minutes" variable to numeric
-
 clean2_IPGTT_data <- clean2_IPGTT_data %>% mutate(minutes = as.numeric(minutes))
 
-# 5 number summary of variables
-
+# summary of variables
 summary(clean2_IPGTT_data)
 
 ```
 
 ```{r}
-# creating data dictionary text
+# creating data dictionary
 data_dictionary <- data.frame(
   Variable = c(
     "mouse_id", "mouse", "genotype", "sex", "test_week", "minutes", "body_weight", "glucose"
@@ -152,8 +144,8 @@ library(tidyverse)
 
 okabe_ito_palette <- rep(grDevices::palette.colors(palette = "Okabe-Ito"))
 
-#assign colors
-genotype_colors <- c("WT-WT" = "#E69F00", "Het-NOD" = "#56B4E9", "KO-NOD" = "#009E73")
+# assign colors
+genotype_colors <- c("WT-WT" = "#009E73", "Het-NOD" = "#D55E00", "KO-NOD" = "#56B4E9")
 
 
 #assign data
@@ -192,7 +184,7 @@ overall_mean_bodyweight_testweek <- clean2_IPGTT_data %>%
   group_by(test_week) %>%
   summarize(mean_body_weight = mean(body_weight, na.rm = TRUE), .groups = 'drop')
 
-# Create the ggplot with Okabe-Ito color palette
+# plot data
 o <- ggplot(clean2_IPGTT_data, aes(x = test_week, y = body_weight, color = genotype)) +
   geom_point(alpha = 0.05) + # Individual data points
   geom_point(data = mean_bodyweight_testweek_genotype, 
@@ -229,11 +221,12 @@ library(ggtext)
 library(showtext)
 
 # Add Source font
-font_add_google("Source Code Pro", family = "source")
+test <- font_add_google("Source Code Pro", family = "source")
+
 # Enable Font Usage
 showtext_auto()
 
-# Define the plotting function for groups of weeks
+# Define plotting function
 plot_glucose_trajectory_grouped <- function(clean2_IPGTT_data, week_range, genotype_pair, genotype_colors) {
   filtered_data <- clean2_IPGTT_data %>%
     filter(test_week %in% week_range, genotype %in% genotype_pair, !is.na(glucose))
@@ -242,10 +235,11 @@ plot_glucose_trajectory_grouped <- function(clean2_IPGTT_data, week_range, genot
     group_by(test_week, minutes, genotype) %>%
     summarize(median_glucose = median(glucose, na.rm = TRUE), .groups = 'drop')
 
-  # Create colored genotype text for title
+  # colored title text
   colored_genotype1 <- paste0("<span style='color:", genotype_colors[genotype_pair[1]], "'>", genotype_pair[1], "</span>")
   colored_genotype2 <- paste0("<span style='color:", genotype_colors[genotype_pair[2]], "'>", genotype_pair[2], "</span>")
 
+# plot data
   m <- ggplot(data = filtered_data, aes(x = minutes, y = glucose, color = genotype)) +
     geom_point(alpha = 0.5) +
     geom_line(aes(group = mouse_id), alpha = 0.3) +
@@ -271,28 +265,192 @@ plot_glucose_trajectory_grouped <- function(clean2_IPGTT_data, week_range, genot
   ggplotly(m)
 }
 
-# Define the week ranges and genotype pairs
+# Define variables
 week_ranges <- list(1:4, 5:8, 9:12)
 genotype_pairs <- list(c("WT-WT", "Het-NOD"), c("Het-NOD", "KO-NOD"), c("WT-WT", "KO-NOD"))
 
-# Define the colors for each genotype
-genotype_colors <- c("WT-WT" = "#E69F00", "Het-NOD" = "#56B4E9", "KO-NOD" = "#009E73")
 
-# Create plots for each combination of week range and genotype pair
+# plots for combinations of week range and genotype pair
 plots <- map(week_ranges, function(week_range) {
   map(genotype_pairs, function(genotype_pair) {
     plot_glucose_trajectory_grouped(clean2_IPGTT_data, week_range, genotype_pair, genotype_colors)
   })
 })
 
-# Flatten the list of plots
+# Flatten plots
 plots <- flatten(plots)
 
-# Print the number of successfully created plots
+# Print "#" created plots
 print(paste("Number of plots created:", length(plots)))
 
-# Display the plots
+# Display plots
 for (plot in plots) {
   print(plot)
 }
+```
+
+# Mixed-Effects modeling
+
+```{r}
+
+# Load libraries
+library(readr)
+library(dplyr)
+library(lme4)
+library(ggplot2)
+library(ggeffects)
+
+
+# Filter first week
+week1_data <- clean2_IPGTT_data %>%
+  filter(test_week == 1)
+
+# Fit model
+model <- lm(glucose ~ minutes + genotype, data = week1_data)
+
+# summary
+summary(model)
+
+# plot model
+a <- ggplot(week1_data, aes(x = minutes, y = glucose, color = genotype)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = paste(
+      "<span style='color:", genotype_colors["WT-WT"], "'>WT-WT</span> vs ",
+      "<span style='color:", genotype_colors["Het-NOD"], "'>Het-NOD</span> vs ",
+      "<span style='color:", genotype_colors["KO-NOD"], "'>KO-NOD</span>", "Blood Glucose Levels in the First Week"),
+      subtitle = "Blood Glucose Levels in the First Week",
+       x = "Test Minutes",
+       y = "Blood Glucose",
+       color = "Genotype") +
+  theme_minimal() +
+  scale_x_continuous(breaks = c(0, 30, 60, 90, 120)) +
+  scale_color_manual(values = genotype_colors) +
+  theme(
+    legend.position = "none"
+    )
+ggplotly(a)
+
+```
+
+## mixed model
+
+```{r}
+library(readr)
+library(dplyr)
+library(lme4)
+library(ggplot2)
+library(ggeffects)
+
+
+
+# change variables to factors and re-level variables
+clean2_IPGTT_data <- clean2_IPGTT_data %>% 
+  mutate(
+    test_week_factor = factor(test_week, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")),
+    minutes_factor = factor(minutes, levels = c("1", "3", "5", "10", "15", "30", "60", "90", "120"))
+  )
+
+
+# filter just week 1
+clean2_IPGTT_data %>%
+  filter(test_week == 1) %>% na.omit() -> week1_data_omit
+
+# mixed-effects model1
+mixed_model1 <- lmer(glucose ~ minutes * genotype + 
+                      (1|mouse_id),
+                    data = week1_data_omit)
+
+# mixed-effects model2
+mixed_model2 <- lmer(glucose ~ minutes + test_week + genotype + 
+                      (1|mouse_id) + 
+                      (0 + test_week|mouse_id),
+                    data = clean2_IPGTT_data)
+
+# summary
+
+emmm <- emmeans(mixed_model1, specs = ~ genotype | minutes)
+
+
+broom.mixed::tidy(emmm)
+
+# Predictions
+# predictions <- ggpredict(mixed_model1, terms = c("minutes", "genotype", "test_week"))
+
+# predictions as a data frame
+# pred_df <- as.data.frame(predictions)
+
+# differences
+contrast_results <- pairs(emmm, interaction = "pairwise")
+
+# convert to df
+df_contrast <- broom.mixed::tidy(contrast_results)
+
+c <- ggplot(df_contrast, aes(x = minutes, y = estimate, color = genotype_pairwise, group = genotype_pairwise)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error), width = 0.1) +
+  theme_minimal() +
+  facet_wrap(~ genotype_pairwise) +
+  labs(title = "Differences in Means Between Genotypes (Week 1)",
+       x = "Time Point",
+       y = "Pairwise difference")
+ggplotly(c)
+
+```
+
+# new data
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(readxl)
+library(here)
+library(stringr)
+
+# Define path
+glucose_tracking <- here("C:/Users/khopkins/Documents/mouseData/Glucose Tracking Results.xlsx")
+
+# List sheet names
+sheet_names <- excel_sheets(glucose_tracking)
+
+# Filter sheets with "Group ##"
+group_sheets <- sheet_names[str_detect(sheet_names, "^Group\\s?\\d+$")]
+
+# Function for consistent date format
+convert_to_date <- function(data) {
+  ymd_pattern <- "^(\\d{4})-(\\d{2})-(\\d{2})$"
+  mdy_pattern <- "^(\\d{2})/(\\d{2})/(\\d{4})$"
+  dmy_pattern <- "^(\\d{2})\\.(\\d{2})\\.(\\d{4})$"
+  
+  data %>%
+    mutate(across(where(is.character), ~ case_when(
+      str_detect(., ymd_pattern) ~ as.character(as.Date(., format = "%Y-%m-%d")),
+      str_detect(., mdy_pattern) ~ as.character(as.Date(., format = "%m/%d/%Y")),
+      str_detect(., dmy_pattern) ~ as.character(as.Date(., format = "%d.%m.%Y")),
+      TRUE ~ .
+    )))
+}
+
+# Function reads excel, date columns, return tidy df
+read_and_tidy <- function(path, sheet) {
+  read_excel(path = path, sheet = sheet) %>%
+    convert_to_date() %>%
+    mutate(across(everything(), ~ str_trim(.))) %>%  
+    mutate(across(everything(), ~ str_replace_all(., "\\s+", " ")))  
+}
+
+# create dfs
+data_list <- lapply(group_sheets, read_and_tidy, path = glucose_tracking)
+
+# Combine dfs
+tidy_data <- bind_rows(data_list, .id = "sheet")
+
+# View data
+print(tidy_data)
+view(tidy_data)
+
+sheet5 <- sheet_names[str_detect(sheet_names, fixed("Group 5"))]
+sheet5_data <- lapply(sheet5, read_and_tidy, path = glucose_tracking)
+
 ```

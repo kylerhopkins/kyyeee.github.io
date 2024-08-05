@@ -409,7 +409,7 @@ library(here)
 library(stringr)
 
 # Define path
-glucose_tracking <- here("C:/Users/khopkins/Documents/mouseData/Glucose Tracking Results.xlsx")
+glucose_tracking <- here("Glucose Tracking Results.xlsx")
 
 # List sheet names
 sheet_names <- excel_sheets(glucose_tracking)
